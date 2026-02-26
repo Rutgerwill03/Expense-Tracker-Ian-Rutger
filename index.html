@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<title>Expense Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-2: #1e1e1e;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --text-dim: #777;
+    --accent: #22c55e;
+    --accent-dim: rgba(34, 197, 94, 0.12);
+    --red: #ef4444;
+    --red-dim: rgba(239, 68, 68, 0.12);
+    --radius: 14px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 20px 100px;
+  }
+
+  .header {
+    padding: 60px 0 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .header .date {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Status Bar */
+  .status-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+  }
+
+  .status-dot.connected { background: var(--accent); }
+
+  .status-text { color: var(--text-dim); }
+
+  /* Input Section */
+  .input-section { margin-bottom: 24px; }
+
+  .input-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .input-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+
+  .input-box:focus-within { border-color: var(--accent); }
+
+  .input-box input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 16px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+  }
+
+  .input-box input::placeholder { color: #444; }
+
+  .send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .send-btn:active { transform: scale(0.92); }
+  .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .send-btn svg { width: 18px; height: 18px; }
+
+  /* Receipt Upload */
+  .receipt-section { margin-bottom: 32px; }
+
+  .receipt-drop {
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .receipt-drop:active { transform: scale(0.98); }
+
+  .receipt-drop.has-image {
+    border-color: var(--accent);
+    border-style: solid;
+    padding: 0;
+  }
+
+  .receipt-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+  }
+
+  .receipt-icon svg { width: 22px; height: 22px; color: var(--text-dim); }
+  .receipt-text { font-size: 14px; color: var(--text-dim); }
+  .receipt-text strong { color: var(--text); font-weight: 500; }
+
+  .receipt-preview {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    display: none;
+  }
+
+  .receipt-drop.has-image .receipt-preview { display: block; }
+  .receipt-drop.has-image .receipt-placeholder { display: none; }
+
+  .clear-image {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.7);
+    border: none;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    backdrop-filter: blur(8px);
+  }
+
+  .receipt-drop.has-image .clear-image { display: flex; }
+  #fileInput { display: none; }
+
+  .submit-receipt-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+    font-size: 15px;
+    border: none;
+    cursor: pointer;
+    margin-top: 12px;
+    display: none;
+    transition: transform 0.15s, opacity 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .submit-receipt-btn.visible { display: block; }
+  .submit-receipt-btn:active { transform: scale(0.98); }
+  .submit-receipt-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .divider span {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Entries */
+  .recent-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  .entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .entry-left { display: flex; flex-direction: column; gap: 4px; }
+
+  .entry-vendor { font-weight: 600; font-size: 15px; }
+
+  .entry-meta {
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .entry-category {
+    background: var(--surface-2);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .entry-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--accent);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  /* Debug Log */
+  .debug-log {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+  }
+
+  .debug-log.visible { display: block; }
+
+  .debug-log .log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    word-break: break-all;
+  }
+
+  .debug-log .log-entry:last-child { border: none; }
+  .debug-log .log-error { color: var(--red); }
+  .debug-log .log-success { color: var(--accent); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 100;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    max-width: 340px;
+    text-align: center;
+    backdrop-filter: blur(12px);
+  }
+
+  .toast.visible { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(34,197,94,0.25); }
+  .toast.error { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+  .toast.loading { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* Config */
+  .config-panel {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .config-panel.open { display: flex; }
+
+  .config-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 28px 24px 40px;
+    width: 100%;
+    max-width: 480px;
+    animation: slideUp 0.3s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .config-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    color: var(--accent);
+  }
+
+  .config-field { margin-bottom: 16px; }
+
+  .config-field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .config-field input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+  }
+
+  .config-field input:focus { border-color: var(--accent); }
+
+  .config-save {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    margin-top: 8px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .config-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 12px;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .config-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    z-index: 50;
+  }
+
+  .debug-toggle {
+    position: fixed;
+    top: 20px;
+    right: 64px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    z-index: 50;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<button class="debug-toggle" onclick="toggleDebug()">🐛</button>
+<button class="config-toggle" onclick="toggleConfig()">
+  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+</button>
+
+<div class="config-panel" id="configPanel" onclick="if(event.target===this)toggleConfig()">
+  <div class="config-content">
+    <div class="config-title">Webhook Config</div>
+    <div class="config-field">
+      <label>n8n Webhook URL</label>
+      <input type="url" id="webhookUrl" placeholder="https://your-n8n.com/webhook/expenses">
+    </div>
+    <button class="config-save" onclick="saveConfig()">Save</button>
+    <p class="config-hint">Paste your n8n production webhook URL here.</p>
+  </div>
+</div>
+
+<div class="app">
+  <div class="header">
+    <h1>Expenses</h1>
+    <span class="date" id="currentDate"></span>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-text" id="statusText">Checking webhook...</span>
+  </div>
+
+  <!-- Text Input -->
+  <div class="input-section">
+    <div class="input-label">Quick Entry</div>
+    <div class="input-box">
+      <input type="text" id="expenseInput" placeholder='e.g. "15000 groceries Carrefour"' autocomplete="off">
+      <button class="send-btn" id="sendTextBtn" onclick="sendText()">
+        <svg fill="none" stroke="#000" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"><span>or snap a receipt</span></div>
+
+  <!-- Receipt -->
+  <div class="receipt-section">
+    <div class="receipt-drop" id="receiptDrop" onclick="document.getElementById('fileInput').click()">
+      <div class="receipt-placeholder">
+        <div class="receipt-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <p class="receipt-text"><strong>Tap to take photo</strong> or upload receipt</p>
+      </div>
+      <img class="receipt-preview" id="receiptPreview" alt="Receipt preview">
+      <button class="clear-image" onclick="clearImage(event)">✕</button>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="handleImage(event)">
+    <button class="submit-receipt-btn" id="submitReceiptBtn" onclick="sendReceipt()">Scan & Log Receipt</button>
+  </div>
+
+  <!-- Entries -->
+  <div class="recent-header">Recent</div>
+  <div id="entries">
+    <div class="empty-state">No expenses logged yet</div>
+  </div>
+
+  <!-- Debug Log -->
+  <div class="debug-log" id="debugLog"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============================
+  // CONFIG — HARDCODE YOUR URL HERE IF YOU WANT
+  // ============================
+  const HARDCODED_WEBHOOK = 'https://ianrutger.app.n8n.cloud/webhook/73e8d5dc-8169-43c7-93c0-61afcb33a3d2';
+
+  // State
+  let imageBase64 = null;
+  let entries = [];
+
+  try {
+    entries = JSON.parse(localStorage.getItem('expenses') || '[]');
+  } catch(e) {
+    entries = [];
+  }
+
+  // ============================
+  // INIT
+  // ============================
+  function init() {
+    log('App initialized');
+
+    document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric'
+    });
+
+    // Load saved webhook URL into config field
+    const saved = localStorage.getItem('webhookUrl') || '';
+    document.getElementById('webhookUrl').value = saved;
+
+    // Check connection
+    const url = getWebhookUrl();
+    if (url) {
+      setStatus(true, 'Webhook configured');
+      log('Webhook URL: ' + url.substring(0, 40) + '...');
+    } else {
+      setStatus(false, 'No webhook — tap ⚙ to configure');
+      log('No webhook URL set', 'error');
+      setTimeout(() => toggleConfig(), 800);
+    }
+
+    renderEntries();
+
+    // Enter key
+    document.getElementById('expenseInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendText();
+      }
+    });
+
+    log('Event listeners attached');
+  }
+
+  // ============================
+  // WEBHOOK URL
+  // ============================
+  function getWebhookUrl() {
+    if (HARDCODED_WEBHOOK) return HARDCODED_WEBHOOK;
+    return localStorage.getItem('webhookUrl') || null;
+  }
+
+  // ============================
+  // CONFIG PANEL
+  // ============================
+  function toggleConfig() {
+    document.getElementById('configPanel').classList.toggle('open');
+  }
+
+  function saveConfig() {
+    const url = document.getElementById('webhookUrl').value.trim();
+    if (!url) {
+      showToast('Enter a webhook URL', 'error');
+      return;
+    }
+    localStorage.setItem('webhookUrl', url);
+    toggleConfig();
+    setStatus(true, 'Webhook configured');
+    showToast('Saved ✓', 'success');
+    log('Webhook URL saved: ' + url.substring(0, 40) + '...');
+  }
+
+  // ============================
+  // STATUS BAR
+  // ============================
+  function setStatus(connected, text) {
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    dot.className = connected ? 'status-dot connected' : 'status-dot';
+    txt.textContent = text;
+  }
+
+  // ============================
+  // SEND TEXT
+  // ============================
+  async function sendText() {
+    const input = document.getElementById('expenseInput');
+    const message = input.value.trim();
+
+    if (!message) {
+      log('Empty message, skipping');
+      showToast('Type something first', 'error');
+      return;
+    }
+
+    const url = getWebhookUrl();
+    if (!url) {
+      showToast('Set webhook URL first', 'error');
+      toggleConfig();
+      return;
+    }
+
+    const btn = document.getElementById('sendTextBtn');
+    btn.disabled = true;
+    setStatus(true, 'Sending...');
+    showToast('Parsing...', 'loading');
+    log('Sending text: "' + message + '"');
+    log('POST → ' + url);
+
+    try {
+      const body = JSON.stringify({ type: 'text', message: message });
+      log('Request body: ' + body);
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body
+      });
+
+      log('Response status: ' + res.status);
+
+      const text = await res.text();
+      log('Raw response: ' + text.substring(0, 300));
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch(e) {
+        log('Failed to parse JSON response: ' + e.message, 'error');
+        showToast('Bad response from n8n', 'error');
+        setStatus(false, 'Bad response');
+        return;
+      }
+
+      log('Parsed response: ' + JSON.stringify(data), 'success');
+      addEntry(data);
+      input.value = '';
+      showToast('Logged ✓', 'success');
+      setStatus(true, 'Connected');
+
+    } catch (err) {
+      log('FETCH ERROR: ' + err.message, 'error');
+      log('This is likely a CORS issue. Check n8n CORS settings.', 'error');
+      showToast('Failed — see debug log 🐛', 'error');
+      setStatus(false, 'Connection failed');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ============================
+  // SEND RECEIPT IMAGE
+  // ============================
+  async function sendReceipt() {
+    if (!imageBase64) {
+      log('No image selected');
+      return;
+    }
+
+    const url = getWebhookUrl();
+    if (!url) {
+      showToast('Set webhook URL first', 'error');
+      toggleConfig();
+      return;
+    }
+
+    const btn = document.getElementById('submitReceiptBtn');
+    btn.disabled = true;
+    btn.textContent = 'Scanning...';
+    setStatus(true, 'Scanning receipt...');
+    showToast('AI reading receipt...', 'loading');
+    log('Sending receipt image (' + Math.round(imageBase64.length / 1024) + ' KB)');
+
+    try {
+      const body = JSON.stringify({ type: 'image', image: imageBase64 });
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body
+      });
+
+      log('Response status: ' + res.status);
+
+      const text = await res.text();
+      log('Raw response: ' + text.substring(0, 300));
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch(e) {
+        log('Failed to parse JSON: ' + e.message, 'error');
+        showToast('Bad response from n8n', 'error');
+        return;
+      }
+
+      log('Parsed: ' + JSON.stringify(data), 'success');
+      addEntry(data);
+      clearImage(new Event('click'));
+      showToast('Receipt logged ✓', 'success');
+      setStatus(true, 'Connected');
+
+    } catch (err) {
+      log('FETCH ERROR: ' + err.message, 'error');
+      showToast('Failed — see debug log 🐛', 'error');
+      setStatus(false, 'Connection failed');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Scan & Log Receipt';
+    }
+  }
+
+  // ============================
+  // IMAGE HANDLING
+  // ============================
+  function handleImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    log('Image selected: ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB)');
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      imageBase64 = ev.target.result;
+      document.getElementById('receiptPreview').src = imageBase64;
+      document.getElementById('receiptDrop').classList.add('has-image');
+      document.getElementById('submitReceiptBtn').classList.add('visible');
+      log('Image loaded as base64', 'success');
+    };
+    reader.onerror = function() {
+      log('Failed to read image file', 'error');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearImage(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    imageBase64 = null;
+    document.getElementById('receiptDrop').classList.remove('has-image');
+    document.getElementById('submitReceiptBtn').classList.remove('visible');
+    document.getElementById('fileInput').value = '';
+    log('Image cleared');
+  }
+
+  // ============================
+  // ENTRIES
+  // ============================
+  function addEntry(data) {
+    const entry = {
+      vendor: data.vendor || data.Vendor || 'Unknown',
+      amount: data.amount || data.Amount || '0',
+      currency: data.currency || data.Currency || 'ARS',
+      category: data.category || data.Category || 'other',
+      date: data.date || data.Date || new Date().toISOString().split('T')[0],
+      payment_method: data.payment_method || data.Payment_Method || 'unknown',
+      timestamp: Date.now()
+    };
+
+    entries.unshift(entry);
+    if (entries.length > 50) entries = entries.slice(0, 50);
+
+    try {
+      localStorage.setItem('expenses', JSON.stringify(entries));
+    } catch(e) {
+      log('localStorage save failed: ' + e.message, 'error');
+    }
+
+    renderEntries();
+  }
+
+  function renderEntries() {
+    const container = document.getElementById('entries');
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty-state">No expenses logged yet</div>';
+      return;
+    }
+
+    container.innerHTML = entries.slice(0, 15).map(function(e) {
+      return '<div class="entry">' +
+        '<div class="entry-left">' +
+          '<span class="entry-vendor">' + escapeHtml(e.vendor) + '</span>' +
+          '<div class="entry-meta">' +
+            '<span class="entry-category">' + escapeHtml(e.category) + '</span>' +
+            '<span>' + escapeHtml(e.date) + '</span>' +
+            '<span>' + escapeHtml(e.payment_method) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<span class="entry-amount">' + formatAmount(e.amount) + ' ' + escapeHtml(e.currency) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function formatAmount(amt) {
+    var num = parseFloat(amt);
+    if (isNaN(num)) return amt;
+    return num.toLocaleString('es-AR');
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ============================
+  // TOAST
+  // ============================
+  function showToast(msg, type) {
+    var toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast ' + type + ' visible';
+    if (type !== 'loading') {
+      setTimeout(function() { toast.classList.remove('visible'); }, 2500);
+    }
+  }
+
+  // ============================
+  // DEBUG LOG
+  // ============================
+  function toggleDebug() {
+    document.getElementById('debugLog').classList.toggle('visible');
+  }
+
+  function log(msg, type) {
+    console.log('[Expense]', msg);
+    var logEl = document.getElementById('debugLog');
+    var entry = document.createElement('div');
+    entry.className = 'log-entry' + (type === 'error' ? ' log-error' : '') + (type === 'success' ? ' log-success' : '');
+    var time = new Date().toLocaleTimeString();
+    entry.textContent = time + ' — ' + msg;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ============================
+  // DRAG & DROP
+  // ============================
+  var drop = document.getElementById('receiptDrop');
+  drop.addEventListener('dragover', function(e) { e.preventDefault(); drop.classList.add('dragging'); });
+  drop.addEventListener('dragleave', function() { drop.classList.remove('dragging'); });
+  drop.addEventListener('drop', function(e) {
+    e.preventDefault();
+    drop.classList.remove('dragging');
+    var file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        imageBase64 = ev.target.result;
+        document.getElementById('receiptPreview').src = imageBase64;
+        drop.classList.add('has-image');
+        document.getElementById('submitReceiptBtn').classList.add('visible');
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Start
+  init();
+</script>
+</body>
+</html>
